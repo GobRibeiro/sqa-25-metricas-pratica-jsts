@@ -1,4 +1,4 @@
-import { validatePassword } from "../passwordUtils";
+import { validatePassword } from "../PasswordUtils";
 
 describe("validatePassword", () => {
   describe("valid passwords", () => {
@@ -208,11 +208,11 @@ describe("validatePassword", () => {
     });
 
     it("should handle null input", () => {
-      expect(() => validatePassword(null as any)).toThrow();
+      expect(() => validatePassword(null as unknown as string)).toThrow();
     });
 
     it("should handle undefined input", () => {
-      expect(() => validatePassword(undefined as any)).toThrow();
+      expect(() => validatePassword(undefined as unknown as string)).toThrow();
     });
 
     it("should handle very short valid password", () => {

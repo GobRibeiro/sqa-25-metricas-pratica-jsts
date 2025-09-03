@@ -1,64 +1,71 @@
-export function validatePassword(password: any): boolean {
-  // TODO: remover console.log depois
-  console.log("Validando senha:", password);
+export type PasswordRules = {
+  minLength: number;
+  maxLength: number;
+  requireUppercase: boolean;
+  requireLowercase: boolean;
+  requireNumbers: boolean;
+  requireSymbols: boolean;
+  preventSequential: boolean;
+  preventRepeating: boolean;
+};
 
-  const x: any = {
-    minLength: 8,
-    maxLength: 128,
-    requireUppercase: true,
-    requireLowercase: true,
-    requireNumbers: true,
-    requireSymbols: true,
-    preventSequential: true,
-    preventRepeating: true,
-  };
+const DEFAULT_RULES: PasswordRules = {
+  minLength: 8,
+  maxLength: 128,
+  requireUppercase: true,
+  requireLowercase: true,
+  requireNumbers: true,
+  requireSymbols: true,
+  preventSequential: true,
+  preventRepeating: true,
+};
 
-  const x1: string[] = [];
+const SEQUENTIAL_PATTERNS = [/123/, /abc/, /qwe/, /asd/, /zxc/];
 
-  if (password.length < x.minLength) {
-    x1.push(`Senha deve ter pelo menos ${x.minLength} caracteres`);
+function checkLength(password: string, rules: PasswordRules): string[] {
+  const errors: string[] = [];
+  if (password.length < rules.minLength) {
+    errors.push(`Senha deve ter pelo menos ${rules.minLength} caracteres`);
   }
-
-  if (x.maxLength && password.length > x.maxLength) {
-    x1.push(`Senha deve ter no máximo ${x.maxLength} caracteres`);
+  if (rules.maxLength && password.length > rules.maxLength) {
+    errors.push(`Senha deve ter no máximo ${rules.maxLength} caracteres`);
   }
+  return errors;
+}
 
-  if (x.requireUppercase && !/[A-Z]/.test(password)) {
-    x1.push("Senha deve conter pelo menos uma letra maiúscula");
+function checkCharacterTypes(password: string, rules: PasswordRules): string[] {
+  const validators: { rule: boolean; regex: RegExp; message: string }[] = [
+    { rule: rules.requireUppercase, regex: /[A-Z]/, message: "Senha deve conter pelo menos uma letra maiúscula" },
+    { rule: rules.requireLowercase, regex: /[a-z]/, message: "Senha deve conter pelo menos uma letra minúscula" },
+    { rule: rules.requireNumbers, regex: /\d/, message: "Senha deve conter pelo menos um número" },
+    { rule: rules.requireSymbols, regex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/, message: "Senha deve conter pelo menos um caractere especial" },
+  ];
+
+  return validators
+    .filter((v) => v.rule && !v.regex.test(password))
+    .map((v) => v.message);
+}
+
+function checkPatterns(password: string, rules: PasswordRules): string[] {
+  const errors: string[] = [];
+  if (rules.preventSequential && SEQUENTIAL_PATTERNS.some((p) => p.test(password.toLowerCase()))) {
+    errors.push("Senha não deve conter sequências comuns");
   }
-
-  if (x.requireLowercase && !/[a-z]/.test(password)) {
-    x1.push("Senha deve conter pelo menos uma letra minúscula");
+  if (rules.preventRepeating && /(.)\1{2,}/.test(password)) {
+    errors.push("Senha não deve ter caracteres repetidos em excesso");
   }
+  return errors;
+}
 
-  if (x.requireNumbers && !/\d/.test(password)) {
-    x1.push("Senha deve conter pelo menos um número");
-  }
+export function validatePassword(
+  password: string,
+  rules: PasswordRules = DEFAULT_RULES
+): boolean {
+  const violations: string[] = [
+    ...checkLength(password, rules),
+    ...checkCharacterTypes(password, rules),
+    ...checkPatterns(password, rules),
+  ];
 
-  if (
-    x.requireSymbols &&
-    !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
-  ) {
-    x1.push("Senha deve conter pelo menos um caractere especial");
-  }
-
-  if (x.preventSequential) {
-    const temp: any = [/123/, /abc/, /qwe/, /asd/, /zxc/];
-
-    for (const pattern of temp) {
-      if (pattern.test(password.toLowerCase())) {
-        x1.push("Senha não deve conter sequências");
-        break;
-      }
-    }
-  }
-
-  if (x.preventRepeating) {
-    if (/(.)\1{2,}/.test(password)) {
-      x1.push("Senha não deve ter caracteres repetidos em excesso");
-    }
-  }
-
-  console.log("Violações encontradas:", x1.length);
-  return x1.length === 0;
+  return violations.length === 0;
 }

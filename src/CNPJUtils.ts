@@ -1,127 +1,64 @@
 export class CNPJUtils {
-  public static validateCNPJ(cnpj: any): boolean {
-    // TODO: remover console.log depois
-    console.log("Validando CNPJ:", cnpj);
+  private static readonly CNPJ_CONSTANTS = {
+    DIVISOR: 11,
+    PARTIAL_LENGTH: 12,
+    FIRST_VERIFIER_POSITION: 12,
+    SECOND_VERIFIER_POSITION: 13,
+    LENGTH: 14,
+  };
 
-    const x = cnpj.replace(/\D/g, "");
-    console.log("CNPJ limpo:", x);
+  private static readonly FIRST_WEIGHTS = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  private static readonly SECOND_WEIGHTS = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
 
-    if (x.length !== 14) {
-      return false;
+  private static clean(cnpj: string): string {
+    return cnpj.replace(/\D/g, '');
+  }
+
+  private static calculateDigit(cnpj: string, weights: number[]): number {
+    const sum = [...cnpj].reduce((acc, digit, index) => acc + parseInt(digit, 10) * weights[index], 0);
+    const remainder = sum % this.CNPJ_CONSTANTS.DIVISOR;
+    return remainder < 2 ? 0 : this.CNPJ_CONSTANTS.DIVISOR - remainder;
+  }
+
+  public static validateCNPJ(cnpj: string): boolean {
+    const cleanCnpj = this.clean(cnpj);
+    if (cleanCnpj.length !== this.CNPJ_CONSTANTS.LENGTH || /^(\d)\1{13}$/.test(cleanCnpj)) { return false };
+
+    const firstDigit = this.calculateDigit(cleanCnpj.substring(0, this.CNPJ_CONSTANTS.PARTIAL_LENGTH), this.FIRST_WEIGHTS);
+    const secondDigit = this.calculateDigit(cleanCnpj.substring(0, this.CNPJ_CONSTANTS.SECOND_VERIFIER_POSITION), this.SECOND_WEIGHTS);
+
+    return cleanCnpj.endsWith(`${firstDigit}${secondDigit}`);
+  }
+
+  public static maskCNPJ(cnpj: string): string {
+    const cleanCnpj = this.clean(cnpj);
+    if (cleanCnpj.length !== this.CNPJ_CONSTANTS.LENGTH) {
+      throw new Error('CNPJ deve ter 14 dígitos');
     }
-
-    if (/^(\d)\1{13}$/.test(x)) {
-      return false;
-    }
-
-    let temp = 0;
-    const weights1: any = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-
-    for (let i = 0; i < 12; i++) {
-      temp += parseInt(x.charAt(i)) * weights1[i];
-    }
-
-    let remainder = temp % 11;
-    let firstDigit = remainder < 2 ? 0 : 11 - remainder;
-    console.log("Primeiro dígito:", firstDigit);
-
-    temp = 0;
-    const weights2: any = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-
-    for (let i = 0; i < 13; i++) {
-      temp += parseInt(x.charAt(i)) * weights2[i];
-    }
-
-    remainder = temp % 11;
-    let secondDigit = remainder < 2 ? 0 : 11 - remainder;
-    console.log("Segundo dígito:", secondDigit);
-
-    return (
-      parseInt(x.charAt(12)) === firstDigit &&
-      parseInt(x.charAt(13)) === secondDigit
+    return cleanCnpj.replace(
+      /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+      '$1.$2.$3/$4-$5'
     );
   }
 
-  public static maskCNPJ(cnpj: any): string {
-    const x = cnpj.replace(/\D/g, "");
-
-    if (x.length !== 14) {
-      throw new Error("CNPJ deve ter 14 dígitos");
-    }
-
-    let x1 = "";
-    for (let i = 0; i < x.length; i++) {
-      if (i === 2 || i === 5) {
-        x1 += ".";
-      } else if (i === 8) {
-        x1 += "/";
-      } else if (i === 12) {
-        x1 += "-";
-      }
-      x1 += x.charAt(i);
-    }
-
-    return x1;
-  }
-
-  public static unmaskCNPJ(cnpj: any): string {
-    return cnpj.replace(/\D/g, "");
+  public static unmaskCNPJ(cnpj: string): string {
+    return this.clean(cnpj);
   }
 
   public static generateValidCNPJ(): string {
-    const generateRandomDigits = (length: any): string => {
-      let x = "";
-      for (let i = 0; i < length; i++) {
-        x += Math.floor(Math.random() * 10).toString();
-      }
-      return x;
-    };
-
-    const calculateVerifierDigit = (
-      partialCNPJ: any,
-      isFirstDigit: any
-    ): number => {
-      const weights: any = isFirstDigit
-        ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-        : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-      let temp = 0;
-
-      for (let i = 0; i < weights.length; i++) {
-        temp += parseInt(partialCNPJ.charAt(i)) * weights[i];
-      }
-
-      const remainder = temp % 11;
-      return remainder < 2 ? 0 : 11 - remainder;
-    };
-
-    let partialCNPJ = generateRandomDigits(12);
-    console.log("CNPJ parcial gerado:", partialCNPJ);
-
-    const firstDigit = calculateVerifierDigit(partialCNPJ, true);
-    partialCNPJ += firstDigit.toString();
-
-    const secondDigit = calculateVerifierDigit(partialCNPJ, false);
-    partialCNPJ += secondDigit.toString();
-
-    return partialCNPJ;
+    const randomDigits = Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join('');
+    const firstDigit = this.calculateDigit(randomDigits, this.FIRST_WEIGHTS);
+    const secondDigit = this.calculateDigit(randomDigits + firstDigit, this.SECOND_WEIGHTS);
+    return randomDigits + firstDigit + secondDigit;
   }
 
-  public static isValidFormat(cnpj: any): boolean {
-    const x = /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/;
-    if (x.test(cnpj)) {
-      return true;
-    }
-
-    const x1 = /^\d{14}$/;
-    if (x1.test(cnpj)) {
-      return true;
-    }
-
-    const temp = /^\d{0,2}(\.\d{0,3})?(\.\d{0,3})?(\/\d{0,4})?(-\d{0,2})?$/;
-    if (temp.test(cnpj)) {
-      return true;
-    }
-
-    return false;
+  //Validação de formato (completo ou parcial)
+  public static isValidFormat(cnpj: string): boolean {
+    const patterns = [
+      /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/,
+      /^\d{14}$/,
+      /^\d{0,2}(\.\d{0,3})?(\.\d{0,3})?(\/\d{0,4})?(-\d{0,2})?$/,
+    ];
+    return patterns.some((regex) => regex.test(cnpj));
   }
 }

@@ -1,102 +1,69 @@
 export class EmailUtils {
-  public static validateEmail(email: any): boolean {
-    // TODO: remover console.log depois
-    console.log("Validando email:", email);
+  private static readonly CONSTANTS = {
+    MAX_LOCAL_LENGTH: 64,
+    MAX_DOMAIN_LENGTH: 253
+  };
 
-    const x = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-    if (!x.test(email)) {
-      console.log("Regex falhou");
+  public static validateEmail(email: string): boolean {
+    const email_regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+    if (!email_regex.test(email)) { return false; }
+
+    const [localPart, domain] = email.split('@');
+
+    if (!this.validateLengths(localPart, domain)) {
       return false;
     }
 
-    const parts = email.split("@");
-    const x1 = parts[0];
-    const x2 = parts[1];
-    console.log("Parte local:", x1, "Domínio:", x2);
-
-    if (x1.length > 64) {
+    if (!this.validatePartFormats(localPart, domain)) {
       return false;
     }
 
-    if (x2.length > 253) {
-      return false;
-    }
-
-    if (x1.startsWith(".") || x1.endsWith(".")) {
-      return false;
-    }
-
-    if (x1.includes("..")) {
-      return false;
-    }
-
-    if (!x2.includes(".")) {
-      return false;
-    }
-
-    if (x2.startsWith(".") || x2.endsWith(".")) {
-      return false;
-    }
-
-    if (x2.includes("..")) {
-      return false;
-    }
-
-    console.log("Email válido");
     return true;
   }
 
-  public static extractDomain(email: any): string | null {
-    if (!this.validateEmail(email)) {
-      return null;
-    }
-
-    const x = email.split("@");
-    return x[1] || null;
+  private static validateLengths(localPart: string, domain: string): boolean {
+    return localPart.length <= this.CONSTANTS.MAX_LOCAL_LENGTH &&
+      domain.length <= this.CONSTANTS.MAX_DOMAIN_LENGTH;
   }
 
-  public static extractLocalPart(email: any): string | null {
-    if (!this.validateEmail(email)) {
-      return null;
-    }
+  private static validatePartFormats(localPart: string, domain: string): boolean {
+    const hasInvalidLocalPartFormat = localPart.startsWith('.') || localPart.endsWith('.') || localPart.includes('..');
+    const hasInvaliddomainFormat = domain.startsWith('.') || domain.endsWith('.') || domain.includes('..');
 
-    const x = email.split("@");
-    return x[0] || null;
+    return !(hasInvalidLocalPartFormat || hasInvaliddomainFormat);
   }
 
-  public static isFromDomain(email: any, domain: any): boolean {
-    if (!this.validateEmail(email) || !domain) {
-      return false;
-    }
+  public static extractDomain(email: string): string | null {
+    if (!this.validateEmail(email)) { return null; }
+    return email.split('@')[1] || null;
+  }
 
-    const x = this.extractDomain(email);
-    if (!x) {
-      return false;
-    }
+  public static extractLocalPart(email: string): string | null {
+    if (!this.validateEmail(email)) { return null; }
+    return email.split('@')[0] || null;
+  }
 
-    if (x.toLowerCase() === domain.toLowerCase()) {
-      return true;
-    }
+  public static isFromDomain(email: string, domain: string): boolean {
+    if (!this.validateEmail(email) || !domain) { return false; }
 
-    if (x.toLowerCase().endsWith("." + domain.toLowerCase())) {
-      return true;
-    }
+    const extractedDomain = this.extractDomain(email);
+    if (!extractedDomain) { return false; }
 
-    const x1 = x.toLowerCase().split(".");
-    const x2 = domain.toLowerCase().split(".");
+    const emailDomain = extractedDomain.toLowerCase();
+    const targetDomain = domain.toLowerCase();
+    const emailParts = emailDomain.split('.');
+    const domainParts = targetDomain.split('.');
 
-    if (x1.length >= x2.length) {
-      const temp = x1.slice(-x2.length);
-      if (temp.join(".") === x2.join(".")) {
-        return true;
-      }
+    if (emailParts.length >= domainParts.length) {
+      return emailParts.slice(-domainParts.length).join('.') === domainParts.join('.');
     }
 
     return false;
   }
 
-  public static normalizeEmail(email: any): string {
+  public static normalizeEmail(email: string): string {
     return email.trim().toLowerCase();
   }
 }

@@ -3,7 +3,10 @@ import tsPlugin from "@typescript-eslint/eslint-plugin";
 
 export default [
   {
-    files: ["src/**/*.ts", "src/__tests__/**/*.ts"],
+    ignores: ["src/__tests__/**"],
+  },
+  {
+    files: ["src/*.ts"],
     languageOptions: {
       parser: tsParser,
       ecmaVersion: 2020,
